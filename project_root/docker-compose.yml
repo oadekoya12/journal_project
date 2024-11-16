@@ -1,0 +1,49 @@
+
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../dockerfile/Dockerfile.backend
+    labels:
+      - "traefik.http.routers.backend.rule=Host(`api.myjournal.local`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls=true"
+    networks:
+      - traefik_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../dockerfile/Dockerfile.frontend
+    labels:
+      - "traefik.http.routers.frontend.rule=Host(`app.myjournal.local`)"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls=true"
+    networks:
+      - traefik_network
+
+  traefik:
+    image: traefik:v2.9
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--api.insecure=true"  # Enable Traefik Dashboard
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs:/etc/traefik/certs
+      - ./traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yml
+    networks:
+      - traefik_network
+
+networks:
+  traefik_network:
+    driver: bridge
